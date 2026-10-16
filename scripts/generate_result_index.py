@@ -190,6 +190,22 @@ SECTIONS = [
         ],
         "interpretation": "Historical repository hygiene audit retained for development traceability.",
     },
+    {
+        "category": "scr1_repaired_full_flow",
+        "purpose": "Complete guarded SCR1 refinement from a repaired feasible assignment, comparing Context-OFF and Context-ON under the original native TritonPart guard reference.",
+        "primary_outputs": [
+            "results/benchmark_summary/scr1_repaired_full_flow_structural_rollup.csv",
+            "results/benchmark_summary/scr1_repaired_full_flow_structural_summary.csv",
+            "results/benchmark_summary/scr1_repaired_full_flow_audit.csv",
+        ],
+        "figures": [],
+        "entrypoints": [
+            "scripts/run_scr1_repaired_full_flow.sh",
+            "scripts/evaluate_scr1_repaired_full_flow.sh",
+            "scripts/audit_scr1_repaired_full_flow.py",
+        ],
+        "interpretation": "Additional full-flow boundary-case evidence following the manuscript's SCR1 restoration study. Not part of the frozen PicoRV32/riscv32i manuscript comparison; scenario-sensitive gains are limited and do not establish uniform improvement over native TritonPart.",
+    },
 ]
 
 
@@ -235,6 +251,8 @@ def write_markdown(path: Path, rows: list[dict[str, str]]) -> None:
 
     for row in rows:
         title = row["category"].replace("_", " ").title()
+        if row["category"] == "scr1_repaired_full_flow":
+            title = "SCR1 Repaired Full Flow"
         lines.extend(
             [
                 f"## {title}",

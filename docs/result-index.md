@@ -1,6 +1,7 @@
 # Historical Development Result Index
 
-This generated index documents retained development and historical experiment families. It is not the source of truth for the final manuscript tables. For paper-facing results and provenance, see `README.md` and `paper/`.
+This generated index documents retained development and historical experiment families.
+It is not the source of truth for the final manuscript tables. For paper-facing results and provenance, see `README.md` and `paper/`.
 
 The listed metrics are proxy-level evaluation artifacts unless explicitly stated otherwise.
 
@@ -235,3 +236,25 @@ The listed metrics are proxy-level evaluation artifacts unless explicitly stated
 **Entrypoints.**
 
 - `scripts/audit_paper_readiness.py` (present)
+
+## SCR1 Repaired Full Flow
+
+**Purpose.** Complete guarded SCR1 refinement from a repaired feasible assignment, comparing Context-OFF and Context-ON under the original native TritonPart guard reference.
+
+**Interpretation.** Additional full-flow boundary-case evidence following the manuscript's SCR1 restoration study. Not part of the frozen PicoRV32/riscv32i manuscript comparison; scenario-sensitive gains are limited and do not establish uniform improvement over native TritonPart.
+
+**Primary outputs.**
+
+- `results/benchmark_summary/scr1_repaired_full_flow_structural_rollup.csv` (present)
+- `results/benchmark_summary/scr1_repaired_full_flow_structural_summary.csv` (present)
+- `results/benchmark_summary/scr1_repaired_full_flow_audit.csv` (present)
+
+**Figures.**
+
+- None
+
+**Entrypoints.**
+
+- `scripts/run_scr1_repaired_full_flow.sh` (present)
+- `scripts/evaluate_scr1_repaired_full_flow.sh` (present)
+- `scripts/audit_scr1_repaired_full_flow.py` (present)

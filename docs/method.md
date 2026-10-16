@@ -135,6 +135,24 @@ Output:
 
 The restoration step is optional and precedes the Context-OFF / Context-ON comparison. It does not use recovered design context and does not alter the definition of the subsequent refinement objective.
 
+## SCR1 Full-Flow Evaluation Following Restoration
+
+The optional restoration stage in the submitted method is scenario independent and precedes normal ASA-RV3D refinement. The frozen manuscript evaluates `scr1_core_tuned` only through this restoration stage. A separate subsequent evaluation completes the remaining refinement steps for that design without redefining the method, objective, or feasibility guards.
+
+For SCR1, let `A0` denote the native timing-aware TritonPart assignment and `Ar` the assignment produced by guarded restoration. The imported `A0` is mildly infeasible under the reconstructed-area interval (`0.520588` against an upper limit of `0.52`), whereas `Ar` is feasible (`0.519990`). The restored assignment is obtained after five instance moves, with raw crossings changing from `272` to `276`.
+
+Normal Context-OFF and Context-ON refinement both initialize their current tier state at `Ar`. Their raw-cut and timing-path reference metrics, however, are evaluated at `A0`. Thus, the refinement *starting assignment* and the *guard reference assignment* are distinct. The implementation exposes this distinction through `--initial-assignment` and `--guard-reference-assignment`, respectively. The accepted move sequence remains subject to the original 5% raw-cut regret ceiling, zero mean tier-transition regret, zero worst tier-transition increase, and the `0.48-0.52` reconstructed-area interval. No additional cut or path allowance is granted by restoration.
+
+Both refinement modes use the existing normalized, risk-weighted move objective and the same parameter settings as the manuscript (`300` maximum iterations, `100` evaluated paths, a convergence window of `10` accepted moves, and a minimum recent relative gain of `1e-3`). Context-OFF disables the recovered design-context term while retaining physical and timing information; Context-ON enables all three terms. The restoration algorithm itself remains independent of those scenario-specific terms.
+
+The subsequent SCR1 evaluation contains three scenarios and two refinement modes per scenario. Each run accepts 39-40 moves and ends with `285` raw crossing nets, corresponding to `4.78%` regret relative to `A0`. The final assignments satisfy the reconstructed-area guard. The evaluated mean and worst tier-transition counts remain zero, and the timing-weighted crossing proxy is unchanged. These measures are independent of the optimization objective and should not be interpreted as evidence of improvement in routed 3-D timing.
+
+The scenario-sensitive counts are `143` (OFF) versus `142` (ON) for control/datapath and `39` (OFF) versus `37` (ON) for state/clock. For memory-near-logic, both counts are zero, so a relative context gain is undefined. In both nonzero scenarios, Context-ON has fewer scenario-sensitive crossings than Context-OFF, but does not improve upon the native SCR1 assignment. This is a scenario-dependent boundary result, not a new positive benchmark claim for the frozen paper comparison. Likewise, objective-reduction percentages from Context-OFF and Context-ON are relative to their respective objective definitions and should not be used as direct cross-mode performance comparisons.
+
+The selected 100 SCR1 OpenSTA paths used for this evaluation belong to the `asynchronous` path group and contain no tier transitions. Accordingly, the unchanged mean and worst path-cut values establish guard compliance for the evaluated path set only, not protection of every synchronous critical path or final timing closure.
+
+Supporting refinement traces, assignments, and independent evaluations are retained under `results/scr1_core_tuned_repaired_context_off/`, `results/scr1_core_tuned_repaired_context_on/`, and `results/benchmark_summary/scr1_repaired_full_flow_*.csv`. They extend the available experimental evidence but do not change the submitted manuscript's six primary design-scenario pairs or any frozen file under `paper/`.
+
 ## Paper-Facing Result Source
 
 The manuscript-facing result snapshot is stored under `paper/`:

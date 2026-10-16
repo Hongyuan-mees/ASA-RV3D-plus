@@ -165,6 +165,36 @@ paper/table3_path_validation.csv
 ```
 
 The vertical-delay study is a validation proxy and is not a replacement for full post-refinement 3-D routing or signoff timing analysis.
+---
+
+## SCR1 Full-Flow Evaluation After Feasibility Restoration
+
+The manuscript-facing comparison above remains limited to PicoRV32 and riscv32i. Its six design-scenario pairs, the reported partition results, and the path-level validation are unchanged. The submitted manuscript includes `scr1_core_tuned` only as a feasibility-restoration boundary case. The following SCR1 refinement results were obtained separately after completing that restoration study; they are not part of the frozen manuscript tables under `paper/`.
+
+The native SCR1 assignment has a reconstructed tier-0 area fraction of `0.520588`, outside the prescribed `0.48-0.52` interval. Scenario-independent guarded restoration moves five instances and reaches `0.519990`, with raw crossing nets changing from `272` to `276` (1.47% regret). Context-OFF and Context-ON are then run from this **same restored assignment**, while the raw-cut and timing-path guards remain referenced to the **original native assignment**. In particular, the 5% raw-cut allowance is not reset after restoration.
+
+The table reports raw crossing nets (`R`) and scenario-sensitive crossing nets (`S`) using the same metric definitions as the manuscript. Context gain compares Context-ON with Context-OFF in scenario-sensitive crossings; it is undefined when the Context-OFF count is zero.
+
+| SCR1 scenario | Native R/S | Restored R/S | Context-OFF R/S | Context-ON R/S | Context gain |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| control/datapath | 272 / 136 | 276 / 136 | 285 / 143 | 285 / 142 | +0.7% |
+| memory-near-logic | 272 / 0 | 276 / 0 | 285 / 0 | 285 / 0 | N/A |
+| state/clock | 272 / 35 | 276 / 39 | 285 / 39 | 285 / 37 | +5.1% |
+
+All six refinement runs complete with 39-40 accepted instance moves. Their final reconstructed tier-0 area fractions remain within the prescribed window, and each produces `285` raw crossing nets, corresponding to `4.78%` regret relative to the original native assignment. The evaluated mean and worst tier-transition metrics remain unchanged. The raw crossing count is a feasibility guard, not the quantity directly minimized by the normalized refinement objective; consequently, an objective-improving move can increase raw crossings while remaining admissible.
+
+These results demonstrate an executable restoration-to-refinement path, not a uniform improvement over native TritonPart. Context-ON reduces scenario-sensitive crossings relative to Context-OFF for control/datapath and state/clock, but both refined solutions exceed the native scenario-sensitive counts in those two scenarios. The memory-near-logic case has no observable scenario-sensitive crossings under the retained mapping, so no context-gain percentage is reported. The SCR1 results therefore remain a boundary-case extension rather than a third design in the submitted paper's main comparison.
+
+For SCR1, the selected 100 OpenSTA maximum-delay paths in this evaluation come from the `asynchronous` path group and contain no tier transitions in any of the four assignments. The unchanged path-cut metrics apply only to these evaluated paths; they do not establish synchronous critical-path improvement or signoff-quality 3-D timing behavior.
+
+The corresponding additional results and checks are retained in:
+
+```text
+results/benchmark_summary/scr1_repaired_full_flow_structural_rollup.csv
+results/benchmark_summary/scr1_repaired_full_flow_structural_summary.csv
+results/benchmark_summary/scr1_repaired_full_flow_audit.csv
+```
+
 
 ---
 
@@ -248,6 +278,17 @@ The frozen manuscript-facing SCR1 restoration values remain those recorded in:
 ```text
 paper/scr1_feasibility_restoration.csv
 ```
+
+To reproduce the subsequent SCR1 repaired-start refinement, first run the smoke and resume checks, then the three-scenario Context-OFF / Context-ON evaluation:
+
+```bash
+bash scripts/run_scr1_repaired_full_flow.sh smoke control_datapath_split both
+bash scripts/run_scr1_repaired_full_flow.sh formal all both
+bash scripts/evaluate_scr1_repaired_full_flow.sh
+python3 scripts/audit_scr1_repaired_full_flow.py
+```
+
+The full-flow runner uses the restored SCR1 assignment as `--initial-assignment` and explicitly supplies the original native assignment through `--guard-reference-assignment`. Its outputs are written under `results/scr1_core_tuned_repaired_context_off/`, `results/scr1_core_tuned_repaired_context_on/`, and `results/benchmark_summary/`; the manuscript-facing files under `paper/` are not updated. Details and input prerequisites are given in `docs/reproduction-guide.md`.
 
 Large OpenROAD physical-design artifacts such as ODB, GDS, SPEF, and full run logs are not committed to the repository.
 

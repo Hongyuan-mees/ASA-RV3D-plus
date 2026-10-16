@@ -96,6 +96,70 @@ These restoration scripts use the original native TritonPart assignment as the r
 
 The frozen manuscript-facing restoration values remain those recorded in `paper/scr1_feasibility_restoration.csv`.
 
+## SCR1 Repaired-Start Full-Flow Reproduction
+
+This additional experiment completes the restoration-to-refinement flow for `scr1_core_tuned`. It is separate from the manuscript-facing SCR1 restoration-only snapshot in `paper/scr1_feasibility_restoration.csv`, and it does not modify that snapshot or the paper's PicoRV32/riscv32i tables.
+
+The full-flow scripts require the native timing-aware SCR1 assignment, the retained SCR1 feature tables, its reconstructed OpenROAD instance-area CSV, and its OpenSTA maximum-delay report. The relevant paths are:
+
+```text
+results/scr1_core_tuned_tritonpart_design_timing_aware/tritonpart_design_timing_aware_assignment.csv
+results/scr1_core_tuned_features/
+results/benchmark_summary/scr1_core_tuned_openroad_instance_area.csv
+results/timing_reports/scr1_core_tuned_report_checks_max.rpt
+```
+
+From the repository root, check the guarded restoration and exercise a short fresh/resume test:
+
+```bash
+bash scripts/run_scr1_repaired_full_flow.sh smoke control_datapath_split both
+```
+
+Run the complete three-scenario Context-OFF / Context-ON experiment and its independent evaluations:
+
+```bash
+bash scripts/run_scr1_repaired_full_flow.sh formal all both
+bash scripts/evaluate_scr1_repaired_full_flow.sh
+python3 scripts/audit_scr1_repaired_full_flow.py
+```
+
+The full-flow runner invokes the existing SCR1 restoration routine unless `SKIP_RESTORATION=1` is set, in which case it verifies and reuses the retained restoration result. It validates the expected guarded restoration (`0.520588` to `0.519990` after five moves, `272` to `276` raw crossings) before refinement. Completed runs may be skipped; interrupted runs are resumed from their manifests. To force a fresh run, archive or relocate the specific existing output directory first rather than overwriting manuscript-facing or historical results.
+
+Both refinement modes start from:
+
+```text
+results/scr1_core_tuned_baseline_feasibility_restoration/guarded/restored_assignment.csv
+```
+
+Raw-cut and timing-path guards continue to use the original native TritonPart assignment as the reference. This is enforced by supplying both `--initial-assignment` (restored) and `--guard-reference-assignment` (native) to the refinement implementation. Replacing the original guard reference with the restored assignment would change the allowed regret and would not reproduce the reported experiment.
+
+The final instance assignments, move traces, run summaries, execution logs, and resume manifests are stored under:
+
+```text
+results/scr1_core_tuned_repaired_context_off/<scenario>/
+results/scr1_core_tuned_repaired_context_on/<scenario>/
+```
+
+The scenario identifiers are `control_datapath_split`, `memory_near_logic`, and `state_and_clock_protected`. Consolidated result files include:
+
+```text
+results/benchmark_summary/scr1_repaired_full_flow_structural_summary.csv
+results/benchmark_summary/scr1_repaired_full_flow_structural_rollup.csv
+results/benchmark_summary/scr1_repaired_full_flow_audit.csv
+results/benchmark_summary/scr1_core_tuned_<scenario>_repaired_full_flow_timing_crossing.csv
+results/benchmark_summary/scr1_core_tuned_<scenario>_repaired_full_flow_path_cuts.csv
+```
+
+The structural rollup includes Native, Repaired, Context-OFF, and Context-ON counts. The memory-near-logic context gain is undefined because the Context-OFF scenario-sensitive count is zero. The evaluated SCR1 path-cut proxy uses 100 paths selected from the retained `asynchronous` path group, all with zero tier transitions. These observations establish compliance with the evaluated constraints but not signoff-quality 3-D timing or synchronous critical-path improvement.
+
+Finally, verify that the already submitted paper snapshot is still intact:
+
+```bash
+python3 scripts/audit_paper_snapshot.py
+```
+
+Do not substitute this SCR1 extension for the frozen manuscript results under `paper/`. The existing `scripts/run_normalized_dynamic_convergence_phase3.sh` starts its historical SCR1 runs from the native assignment and is not the entrypoint for this repaired-start experiment.
+
 ## Optional Environment Overrides
 
 Historical/development modes accept environment overrides:
