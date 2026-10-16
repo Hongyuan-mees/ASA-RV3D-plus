@@ -17,8 +17,8 @@ where each signal is scaled to [0, 1] across instances in the current design.
 The purpose is to test whether the previous Phase-3 objective was dominated by
 raw architecture weights.
 * the guard preserves OpenROAD-style area balance;
-* raw cut regret and timing-path cut metrics are bounded against the native
-  timing-aware TritonPart starting point.
+* raw cut regret and timing-path cut metrics are bounded against an explicit
+  guard-reference assignment (the initial assignment by default).
 
 It is a paper-facing prototype for constrained local refinement, not a signoff
 3D physical-design tool.
@@ -529,6 +529,14 @@ def path_cut_stats(paths: list[TimingPath], tier: dict[str, str]) -> dict[str, f
     }
 
 
+def relative_regret(value: float, reference: float) -> float:
+    """Return relative regret while treating a zero reference as a hard zero guard."""
+
+    if reference > 0.0:
+        return (value - reference) / reference
+    return 0.0 if value <= reference else float("inf")
+
+
 def build_inst_to_paths(paths: list[TimingPath]) -> dict[str, list[int]]:
     inst_to_paths: dict[str, list[int]] = defaultdict(list)
     for index, path in enumerate(paths):
@@ -582,6 +590,7 @@ def save_resume_state(
     scenario: str,
     architecture_mode: str,
     initial_assignment: Path,
+    guard_reference_assignment: Path,
     iteration: int,
     objective: float,
     cumulative_gain: float,
@@ -598,6 +607,7 @@ def save_resume_state(
         "scenario": scenario,
         "architecture_mode": architecture_mode,
         "original_initial_assignment": str(initial_assignment),
+        "guard_reference_assignment": str(guard_reference_assignment),
         "last_completed_iteration": iteration,
         "latest_checkpoint": str(checkpoint_path),
         "trace_path": str(trace_path),
@@ -614,6 +624,14 @@ def main() -> int:
     parser.add_argument("--design", required=True)
     parser.add_argument("--scenario", required=True)
     parser.add_argument("--initial-assignment", type=Path, required=True)
+    parser.add_argument(
+        "--guard-reference-assignment",
+        type=Path,
+        help=(
+            "Assignment used for raw-cut and timing-path guard budgets. "
+            "Defaults to --initial-assignment for backward compatibility."
+        ),
+    )
     parser.add_argument("--features-dir", type=Path, required=True)
     parser.add_argument("--instance-area", type=Path, required=True)
     parser.add_argument("--timing-report", type=Path, required=True)
@@ -689,6 +707,7 @@ def main() -> int:
     resume_manifest: dict[str, object] = {}
     resume_checkpoint: Path | None = None
     resume_trace_path: Path | None = None
+    guard_reference_assignment = args.guard_reference_assignment or args.initial_assignment
     if args.resume_from:
         resume_manifest = json.loads(args.resume_from.read_text(encoding="utf-8"))
         resume_initial = Path(str(resume_manifest.get("original_initial_assignment", args.initial_assignment)))
@@ -699,11 +718,31 @@ def main() -> int:
                 flush=True,
             )
         args.initial_assignment = resume_initial
+        resume_guard_reference = Path(
+            str(resume_manifest.get("guard_reference_assignment", resume_initial))
+        )
+        if args.guard_reference_assignment and str(args.guard_reference_assignment) != str(resume_guard_reference):
+            raise SystemExit(
+                "resume guard reference mismatch: "
+                f"requested {args.guard_reference_assignment}, manifest records {resume_guard_reference}"
+            )
+        guard_reference_assignment = resume_guard_reference
         resume_checkpoint = Path(str(resume_manifest["latest_checkpoint"]))
         resume_trace_path = Path(str(resume_manifest.get("trace_path", trace_path)))
 
     rows, tier, _weight, arch_unit, semantic_group = load_assignment(args.initial_assignment)
-    baseline_tier = dict(tier)
+    initial_tier = dict(tier)
+    _guard_rows, guard_reference_tier, _guard_weight, _guard_arch, _guard_group = load_assignment(
+        guard_reference_assignment
+    )
+    if set(initial_tier) != set(guard_reference_tier):
+        missing_from_guard = sorted(set(initial_tier) - set(guard_reference_tier))
+        missing_from_initial = sorted(set(guard_reference_tier) - set(initial_tier))
+        raise SystemExit(
+            "initial and guard-reference assignments must contain identical instances; "
+            f"missing_from_guard={missing_from_guard[:5]} "
+            f"missing_from_initial={missing_from_initial[:5]}"
+        )
     if resume_checkpoint:
         _checkpoint_rows, checkpoint_tier, _checkpoint_weight, _checkpoint_arch, _checkpoint_group = load_assignment(resume_checkpoint)
         missing_checkpoint_instances = sorted(set(tier) - set(checkpoint_tier))
@@ -752,12 +791,44 @@ def main() -> int:
     inst_to_paths = build_inst_to_paths(paths)
     path_transition = [transition_count(path, tier) for path in paths]
 
-    baseline_crossing, baseline_conn = crossing_stats(baseline_tier, net_to_instances)
-    baseline_area = area_stats(baseline_tier, area)
-    baseline_paths = path_cut_stats(paths, baseline_tier)
-    baseline_objective = total_objective(baseline_tier, net_to_instances, risk)
+    initial_crossing, initial_conn = crossing_stats(initial_tier, net_to_instances)
+    initial_area = area_stats(initial_tier, area)
+    initial_paths = path_cut_stats(paths, initial_tier)
+    baseline_crossing, baseline_conn = crossing_stats(guard_reference_tier, net_to_instances)
+    baseline_area = area_stats(guard_reference_tier, area)
+    baseline_paths = path_cut_stats(paths, guard_reference_tier)
+    baseline_objective = total_objective(initial_tier, net_to_instances, risk)
     current_crossing, current_conn = crossing_stats(tier, net_to_instances)
     current_tier0_area, current_tier1_area, area_matched, area_unmatched = current_area_parts(tier, area)
+
+    separate_guard_reference = str(guard_reference_assignment) != str(args.initial_assignment)
+    if separate_guard_reference:
+        initial_cut_regret = (
+            (initial_crossing - baseline_crossing) / baseline_crossing
+            if baseline_crossing
+            else (0.0 if initial_crossing == 0 else float("inf"))
+        )
+        initial_pavg_regret = relative_regret(
+            float(initial_paths["P_avg_cut"]),
+            float(baseline_paths["P_avg_cut"]),
+        )
+        initial_pwst_delta = float(initial_paths["P_wst_cut"]) - float(baseline_paths["P_wst_cut"])
+        if not area_pass(initial_area, args.area_lo, args.area_hi):
+            raise SystemExit(
+                "initial assignment is not feasible under the requested area interval: "
+                f"tier0_fraction={initial_area['tier0_area_fraction']:.6f}"
+            )
+        if (
+            initial_cut_regret > args.max_cut_regret
+            or initial_pavg_regret > args.max_pavg_regret
+            or initial_pwst_delta > args.max_pwst_delta
+        ):
+            raise SystemExit(
+                "initial assignment already exceeds the original guard reference: "
+                f"cut_regret={initial_cut_regret:.6f} "
+                f"P_avg_regret={initial_pavg_regret} "
+                f"P_wst_delta={initial_pwst_delta:.6f}"
+            )
 
     accepted_rows: list[dict[str, object]] = []
     if resume_trace_path and resume_trace_path.exists():
@@ -778,7 +849,8 @@ def main() -> int:
         f"lambda_physical={args.lambda_physical} "
         f"lambda_timing={args.lambda_timing} "
         f"instances={len(tier)} candidates={len(candidate_pool)} "
-        f"paths={len(paths)} baseline_crossing={baseline_crossing} "
+        f"paths={len(paths)} initial_crossing={initial_crossing} "
+        f"guard_reference_crossing={baseline_crossing} "
         f"baseline_objective={baseline_objective:.6f}",
         flush=True,
     )
@@ -869,11 +941,7 @@ def main() -> int:
 
             affected_paths = inst_to_paths.get(inst, [])
             pavg, pwst, total_transitions = affected_path_stats(paths, path_transition, affected_paths, tier)
-            pavg_regret = (
-                (pavg - baseline_paths["P_avg_cut"]) / baseline_paths["P_avg_cut"]
-                if baseline_paths["P_avg_cut"]
-                else 0.0
-            )
+            pavg_regret = relative_regret(pavg, float(baseline_paths["P_avg_cut"]))
             pwst_delta = pwst - baseline_paths["P_wst_cut"]
             if pavg_regret > args.max_pavg_regret or pwst_delta > args.max_pwst_delta:
                 tier[inst] = old_tier
@@ -983,6 +1051,7 @@ def main() -> int:
             scenario=args.scenario,
             architecture_mode=architecture_mode,
             initial_assignment=args.initial_assignment,
+            guard_reference_assignment=guard_reference_assignment,
             iteration=iteration,
             objective=current_objective,
             cumulative_gain=cumulative_gain,
@@ -1044,22 +1113,31 @@ def main() -> int:
                 "normalized_arch_fraction": f"{contribution['normalized_arch_fraction']:.6f}",
                 "normalized_physical_fraction": f"{contribution['normalized_physical_fraction']:.6f}",
                 "normalized_timing_fraction": f"{contribution['normalized_timing_fraction']:.6f}",
+                "initial_assignment_file": str(args.initial_assignment),
+                "guard_reference_assignment_file": str(guard_reference_assignment),
                 "baseline_objective": f"{baseline_objective:.6f}",
                 "final_objective": f"{final_objective:.6f}",
                 "objective_reduction": f"{(baseline_objective - final_objective) / baseline_objective if baseline_objective else 0.0:.6f}",
+                "initial_crossing_nets": initial_crossing,
                 "baseline_crossing_nets": baseline_crossing,
                 "final_crossing_nets": final_crossing,
                 "cut_regret": f"{(final_crossing - baseline_crossing) / baseline_crossing if baseline_crossing else 0.0:.6f}",
+                "initial_crossing_connections_proxy": initial_conn,
                 "baseline_crossing_connections_proxy": baseline_conn,
                 "final_crossing_connections_proxy": final_conn,
                 "crossing_connection_regret": f"{(final_conn - baseline_conn) / baseline_conn if baseline_conn else 0.0:.6f}",
-                "initial_area_balance_pass": str(area_pass(baseline_area, args.area_lo, args.area_hi)).lower(),
+                "initial_area_balance_pass": str(area_pass(initial_area, args.area_lo, args.area_hi)).lower(),
+                "guard_reference_area_balance_pass": str(area_pass(baseline_area, args.area_lo, args.area_hi)).lower(),
+                "initial_tier0_area_fraction": f"{initial_area['tier0_area_fraction']:.6f}",
+                "guard_reference_tier0_area_fraction": f"{baseline_area['tier0_area_fraction']:.6f}",
                 "final_area_balance_pass": str(area_pass(final_area, args.area_lo, args.area_hi)).lower(),
                 "final_area_weight_balance": f"{final_area['area_weight_balance']:.6f}",
                 "final_tier0_area_fraction": f"{final_area['tier0_area_fraction']:.6f}",
+                "initial_P_avg_cut": f"{initial_paths['P_avg_cut']:.6f}",
                 "baseline_P_avg_cut": f"{baseline_paths['P_avg_cut']:.6f}",
                 "final_P_avg_cut": f"{final_paths['P_avg_cut']:.6f}",
-                "P_avg_cut_regret": f"{(final_paths['P_avg_cut'] - baseline_paths['P_avg_cut']) / baseline_paths['P_avg_cut'] if baseline_paths['P_avg_cut'] else 0.0:.6f}",
+                "P_avg_cut_regret": f"{relative_regret(float(final_paths['P_avg_cut']), float(baseline_paths['P_avg_cut'])):.6f}",
+                "initial_P_wst_cut": f"{initial_paths['P_wst_cut']:.6f}",
                 "baseline_P_wst_cut": f"{baseline_paths['P_wst_cut']:.6f}",
                 "final_P_wst_cut": f"{final_paths['P_wst_cut']:.6f}",
                 "P_wst_cut_delta": f"{final_paths['P_wst_cut'] - baseline_paths['P_wst_cut']:.6f}",
