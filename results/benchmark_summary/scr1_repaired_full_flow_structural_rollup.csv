@@ -1,0 +1,4 @@
+design,scenario,native_raw_crossing_nets,repaired_raw_crossing_nets,context_off_raw_crossing_nets,context_on_raw_crossing_nets,restoration_raw_cut_regret_vs_native,context_off_raw_cut_regret_vs_native,context_on_raw_cut_regret_vs_native,native_sensitive_crossing_nets,repaired_sensitive_crossing_nets,context_off_sensitive_crossing_nets,context_on_sensitive_crossing_nets,context_off_sensitive_reduction_vs_repaired,context_on_sensitive_reduction_vs_repaired,context_on_sensitive_reduction_vs_native,context_gain_vs_off,context_gain_defined
+scr1_core_tuned,control_datapath_split,272,276,285,285,0.014706,0.047794,0.047794,136,136,143,142,-0.051471,-0.044118,-0.044118,0.006993,true
+scr1_core_tuned,memory_near_logic,272,276,285,285,0.014706,0.047794,0.047794,0,0,0,0,0.000000,0.000000,0.000000,0.000000,false
+scr1_core_tuned,state_and_clock_protected,272,276,285,285,0.014706,0.047794,0.047794,35,39,39,37,0.000000,0.051282,-0.057143,0.051282,true

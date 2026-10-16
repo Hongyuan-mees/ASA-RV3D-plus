@@ -1,0 +1,5 @@
+design,case,crossing_nets,timing_crossing_nets,timing_crossing_net_fraction,high_timing_crossing_nets,timing_weighted_crossing,top_timing_crossing_unit,top_timing_crossing_unit_hits
+scr1_core_tuned,native,272,31,0.113971,14,5.847579,generated_datapath,78
+scr1_core_tuned,repaired,276,31,0.112319,14,5.847579,generated_datapath,78
+scr1_core_tuned,context_off,285,31,0.108772,14,5.847579,generated_datapath,78
+scr1_core_tuned,context_on,285,31,0.108772,14,5.847579,generated_datapath,78
