@@ -4,9 +4,23 @@
 
 The method is designed to improve a strong timing-aware baseline without discarding the properties already established by the underlying partitioner. Candidate moves are accepted only when they satisfy explicit area, raw-cut, and timing-path feasibility guards.
 
-This repository contains the implementation, experiment scripts, and paper-facing artifacts associated with the manuscript:
+This is the extended research repository for ASA-RV3D. It retains the six primary PicoRV32/riscv32i comparisons reported in the manuscript and adds the subsequent SCR1 feasibility-restoration and full-flow refinement evaluation. The frozen manuscript snapshot is also preserved under `paper/`; the separate paper-version repository is [ASA-RV3D](https://github.com/Hongyuan-mees/ASA-RV3D). This repository's `results/` directory contains the additional experiments and their audit artifacts.
 
-> **Constrained Post-Partition Refinement for RISC-V 3-D Tier Partitioning**
+---
+
+## Results at a Glance
+
+### Primary manuscript comparison
+
+The manuscript's primary evaluation contains six design-scenario pairs across PicoRV32 and riscv32i. Context-ON reduces scenario-sensitive crossings in five of the six pairs; PicoRV32 control/datapath remains a negative case (`-11.2%`). These frozen values are retained in `paper/table2_partition_results.csv`.
+
+### Extended SCR1 full-flow evaluation
+
+After the SCR1 native assignment was restored to the area window, all six Context-OFF / Context-ON refinement runs completed and passed the recorded area, raw-cut, and path guards. The native assignment had 272 raw crossings; restoration produced 276, and all six refinement runs ended at 285 raw crossings, a `4.78%` regret relative to the original native assignment. The final tier-0 area fractions remained within `0.48-0.52`, and the evaluated mean and worst tier-transition guard deltas remained zero.
+
+Context-ON reduced scenario-sensitive crossings relative to Context-OFF by `0.7%` for control/datapath and `5.1%` for state/clock. For memory-near-logic, the retained mapping has zero scenario-sensitive crossings in both modes, so context gain is not defined. These are gains relative to Context-OFF, **not** improvements over Native: the refined SCR1 counts remain above Native for control/datapath and state/clock. SCR1 is therefore reported as a boundary-case extension, not as evidence of uniform improvement over the native partitioner.
+
+Detailed SCR1 values and audit provenance are in `results/benchmark_summary/scr1_repaired_full_flow_structural_rollup.csv`, `results/benchmark_summary/scr1_repaired_full_flow_audit.csv`, and the full table below.
 
 ---
 
@@ -108,7 +122,7 @@ These scenarios provide different soft preferences during Context-ON refinement.
 
 ---
 
-## Paper Benchmarks
+## Primary Paper Benchmarks
 
 The main paper comparison uses:
 
@@ -211,7 +225,7 @@ docs/          Additional method notes and archived development documentation.
 paper/         Frozen paper-facing tables and artifact manifest.
 ```
 
-Historical files under `results/` and `docs/archive/` may contain intermediate algorithm variants or earlier terminology. For the final manuscript-facing method and result definitions, use this README, `docs/method.md`, and the files under `paper/`.
+Historical files under `results/` and `docs/archive/` may contain intermediate algorithm variants or earlier terminology. Use this README and `docs/method.md` for the current extended research method and scope. Files under `paper/` are a frozen manuscript snapshot; the subsequent SCR1 full-flow extension is documented in the SCR1 section above and in `results/benchmark_summary/`.
 
 ---
 
@@ -312,7 +326,7 @@ The design-context recovery is rule-based and explainable; it is not a trained m
 
 The feasibility-restoration extension is demonstrated on **one mildly infeasible imported baseline**. It shows that the evaluated SCR1 boundary case can be restored to the reconstructed area window while preserving the retained raw-cut and timing-path guard budgets, but it should not be interpreted as evidence that arbitrary or severely imbalanced native assignments can always be recovered.
 
-## Paper Artifacts
+## Frozen Manuscript Snapshot
 
 The manuscript-facing snapshot is frozen under:
 
