@@ -118,14 +118,15 @@ These scenarios provide different soft preferences during Context-ON refinement.
 
 ## Benchmark Designs
 
-The primary manuscript comparison uses:
+The following statistics describe the synthesized designs used in the evaluation. PicoRV32 and riscv32i form the primary manuscript comparison; SCR1 is included as an extended boundary-case evaluation.
 
 | Design | Instances | Nets | Reconstructed area (um^2) |
 | --- | ---: | ---: | ---: |
 | PicoRV32 | 6,779 | 6,868 | 95,512 |
 | riscv32i | 5,737 | 5,819 | 76,420 |
+| SCR1 (`scr1_core_tuned`) | 23,254 | 24,875 | 227,377 |
 
-`scr1_core_tuned` is also evaluated across the same three scenarios after guarded feasibility restoration and full refinement. Its restoration record is retained in `paper/scr1_feasibility_restoration.csv`; the subsequent full-flow results are included alongside the primary results in the unified table below.
+SCR1's design statistics are taken from `results/scr1_core_tuned_features/manifest.json`. Its feasibility-restoration record is retained in `paper/scr1_feasibility_restoration.csv`, and the subsequent full-flow results are included in the unified partition-results table below. The SCR1 extension does not change the frozen manuscript comparison.
 
 ---
 
