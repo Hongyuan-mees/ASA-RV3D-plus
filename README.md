@@ -4,23 +4,15 @@
 
 The method is designed to improve a strong timing-aware baseline without discarding the properties already established by the underlying partitioner. Candidate moves are accepted only when they satisfy explicit area, raw-cut, and timing-path feasibility guards.
 
-This is the extended research repository for ASA-RV3D. It retains the six primary PicoRV32/riscv32i comparisons reported in the manuscript and adds the subsequent SCR1 feasibility-restoration and full-flow refinement evaluation. The frozen manuscript snapshot is also preserved under `paper/`; the separate paper-version repository is [ASA-RV3D](https://github.com/Hongyuan-mees/ASA-RV3D). This repository's `results/` directory contains the additional experiments and their audit artifacts.
+This is the extended research repository for ASA-RV3D. It preserves the primary PicoRV32/riscv32i results reported in the manuscript and adds the SCR1 feasibility-restoration and full-flow refinement results. All three designs are presented together in the unified results table below; the six manuscript-reported rows remain identifiable, while the SCR1 rows document subsequent work without changing the frozen manuscript snapshot under `paper/`. The separate paper-version repository is [ASA-RV3D](https://github.com/Hongyuan-mees/ASA-RV3D).
 
 ---
 
 ## Results at a Glance
 
-### Primary manuscript comparison
+The unified table below brings together nine design-scenario rows: the six primary manuscript results for PicoRV32 and riscv32i, plus three subsequent SCR1 full-flow rows. In the six manuscript rows, Context-ON reduces scenario-sensitive crossings in five cases; PicoRV32 control/datapath remains the negative case (`-11.2%`). The SCR1 rows extend the evaluation to a mildly area-infeasible native assignment and show both the feasibility-restoration step and the subsequent Context-OFF / Context-ON refinement. They do not change the frozen manuscript results under `paper/`.
 
-The manuscript's primary evaluation contains six design-scenario pairs across PicoRV32 and riscv32i. Context-ON reduces scenario-sensitive crossings in five of the six pairs; PicoRV32 control/datapath remains a negative case (`-11.2%`). These frozen values are retained in `paper/table2_partition_results.csv`.
-
-### Extended SCR1 full-flow evaluation
-
-After the SCR1 native assignment was restored to the area window, all six Context-OFF / Context-ON refinement runs completed and passed the recorded area, raw-cut, and path guards. The native assignment had 272 raw crossings; restoration produced 276, and all six refinement runs ended at 285 raw crossings, a `4.78%` regret relative to the original native assignment. The final tier-0 area fractions remained within `0.48-0.52`, and the evaluated mean and worst tier-transition guard deltas remained zero.
-
-Context-ON reduced scenario-sensitive crossings relative to Context-OFF by `0.7%` for control/datapath and `5.1%` for state/clock. For memory-near-logic, the retained mapping has zero scenario-sensitive crossings in both modes, so context gain is not defined. These are gains relative to Context-OFF, **not** improvements over Native: the refined SCR1 counts remain above Native for control/datapath and state/clock. SCR1 is therefore reported as a boundary-case extension, not as evidence of uniform improvement over the native partitioner.
-
-Detailed SCR1 values and audit provenance are in `results/benchmark_summary/scr1_repaired_full_flow_structural_rollup.csv`, `results/benchmark_summary/scr1_repaired_full_flow_audit.csv`, and the full table below.
+For SCR1, guarded restoration moves five instances to bring the reconstructed tier-0 area fraction from `0.520588` to `0.519990`, while keeping raw-cut regret at `1.47%` relative to Native. The six subsequent refinement runs end at `285` raw crossings (`4.78%` regret against the original Native assignment) and pass the recorded area, raw-cut, and path guards. The detailed per-scenario results are included in the same table as the earlier designs below.
 
 ---
 
@@ -104,6 +96,8 @@ For an imported assignment outside the reconstructed area window, the optional f
 
 For an already feasible imported assignment, the restoration stage is a strict no-op. This behavior is verified on PicoRV32 and riscv32i in the retained restoration regression artifacts.
 
+The completed SCR1 boundary case demonstrates why this pre-stage is useful: its imported native assignment had a reconstructed tier-0 area fraction of `0.520588`, just above the `0.52` upper bound. Scenario-independent guarded restoration moved five instances and reached `0.519990`; raw crossings changed from `272` to `276`, a `1.47%` regret, while the evaluated mean and worst tier-transition guard deltas remained zero. The subsequent six refinement runs started from this restored assignment but kept the original native assignment as the guard reference. Each finished at `285` raw crossings (`4.78%` regret against Native), below the `5%` ceiling. Thus, the added restoration step makes this mildly infeasible starting point usable without resetting the cut or path budgets; it is not a claim that arbitrary infeasible assignments can always be recovered.
+
 These constraints separate candidate quality from candidate feasibility: the refinement objective ranks local moves, while the guards protect the baseline area, cut, and timing-path properties.
 
 ---
@@ -122,43 +116,42 @@ These scenarios provide different soft preferences during Context-ON refinement.
 
 ---
 
-## Primary Paper Benchmarks
+## Benchmark Designs
 
-The main paper comparison uses:
+The primary manuscript comparison uses:
 
 | Design | Instances | Nets | Reconstructed area (um^2) |
 | --- | ---: | ---: | ---: |
 | PicoRV32 | 6,779 | 6,868 | 95,512 |
 | riscv32i | 5,737 | 5,819 | 76,420 |
 
-`scr1_core_tuned` is retained as a boundary-case restoration study rather than as part of the primary six-case Context-OFF / Context-ON comparison. Its imported native timing-aware assignment has a reconstructed tier-0 area fraction of **0.520588**, slightly outside the strict **0.48-0.52** window. The optional guarded restoration stage restores feasibility with **five instance moves**, yielding a tier-0 area fraction of **0.519990** and a raw-crossing regret of **1.47%** relative to the original native assignment, while preserving the evaluated mean and worst tier-transition guards. The frozen paper-facing result is stored in `paper/scr1_feasibility_restoration.csv`.
+`scr1_core_tuned` is also evaluated across the same three scenarios after guarded feasibility restoration and full refinement. Its restoration record is retained in `paper/scr1_feasibility_restoration.csv`; the subsequent full-flow results are included alongside the primary results in the unified table below.
 
 ---
 
-## Paper-Reported Partition Results
+## Partition Results Across Designs and Scenarios
 
-The following table mirrors the partition-level result snapshot reported in the manuscript.
+`R/S` denotes raw / scenario-sensitive crossing nets. `Restored R/S` is the assignment after the optional guarded feasibility-restoration stage. For PicoRV32 and riscv32i, restoration is a strict no-op, so this column matches Native. The first six rows are the manuscript-reported comparison; the three SCR1 rows are the subsequent full-flow extension and do not alter the frozen manuscript tables.
 
-`R/S` denotes raw / scenario-sensitive crossing nets.
+| Design | Scenario | Native R/S | Restored R/S | Context-OFF R/S | Context-ON R/S | Context gain |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| PicoRV32 | control/datapath | 346 / 205 | 346 / 205 | 207 / 116 | 217 / 129 | -11.2% |
+| PicoRV32 | memory-near-logic | 346 / 157 | 346 / 157 | 207 / 95 | 202 / 88 | +7.4% |
+| PicoRV32 | state/clock | 346 / 211 | 346 / 211 | 207 / 98 | 214 / 90 | +8.2% |
+| riscv32i | control/datapath | 230 / 119 | 230 / 119 | 229 / 126 | 241 / 116 | +7.9% |
+| riscv32i | memory-near-logic | 230 / 104 | 230 / 104 | 229 / 105 | 226 / 96 | +8.6% |
+| riscv32i | state/clock | 230 / 97 | 230 / 97 | 229 / 72 | 241 / 58 | +19.4% |
+| scr1_core_tuned | control/datapath | 272 / 136 | 276 / 136 | 285 / 143 | 285 / 142 | +0.7% |
+| scr1_core_tuned | memory-near-logic | 272 / 0 | 276 / 0 | 285 / 0 | 285 / 0 | N/A |
+| scr1_core_tuned | state/clock | 272 / 35 | 276 / 39 | 285 / 39 | 285 / 37 | +5.1% |
 
-| Design | Scenario | Native R/S | Context-OFF R/S | Context-ON R/S | Context gain |
-| --- | --- | ---: | ---: | ---: | ---: |
-| PicoRV32 | control/datapath | 346 / 205 | 207 / 116 | 217 / 129 | -11.2% |
-| PicoRV32 | memory-near-logic | 346 / 157 | 207 / 95 | 202 / 88 | +7.4% |
-| PicoRV32 | state/clock | 346 / 211 | 207 / 98 | 214 / 90 | +8.2% |
-| riscv32i | control/datapath | 230 / 119 | 229 / 126 | 241 / 116 | +7.9% |
-| riscv32i | memory-near-logic | 230 / 104 | 229 / 105 | 226 / 96 | +8.6% |
-| riscv32i | state/clock | 230 / 97 | 229 / 72 | 241 / 58 | +19.4% |
+Context gain is the percentage reduction in scenario-sensitive crossings from Context-OFF to Context-ON. Positive values indicate fewer scenario-sensitive crossings after enabling recovered design context; it is undefined when the Context-OFF scenario-sensitive count is zero.
 
-Context gain is the percentage reduction in scenario-sensitive crossings from Context-OFF to Context-ON. Positive values indicate fewer scenario-sensitive crossings after enabling recovered design context.
+Across the six manuscript rows, Context-ON produces positive context gain in five cases. The PicoRV32 control/datapath case remains a negative case, demonstrating that recovered design context is not universally beneficial. In SCR1, Context-ON reduces scenario-sensitive crossings relative to Context-OFF by `0.7%` for control/datapath and `5.1%` for state/clock, while memory-near-logic has zero scenario-sensitive crossings in both modes. These are gains relative to Context-OFF, not improvements over Native: SCR1's refined scenario-sensitive counts remain above Native for control/datapath and state/clock.
 
-Across the six design-scenario pairs, Context-ON produces positive context gain in five cases. The PicoRV32 control/datapath case is retained as a negative case, demonstrating that the contribution of recovered design context is scenario dependent rather than universally beneficial.
+All six SCR1 refinement runs (three scenarios times Context-OFF / Context-ON) passed the recorded guards and accepted 39-40 moves. Each ends at `285` raw crossings, or `4.78%` regret against the original Native assignment; final reconstructed tier-0 area fractions remain within `0.48-0.52`, and the evaluated mean and worst tier-transition guard deltas remain zero. The raw-crossing count is a feasibility guard, not the quantity directly minimized by the normalized refinement objective, so an objective-improving move can increase raw crossings while remaining admissible.
 
-The machine-readable version of this paper snapshot is available at:
-
-```text
-paper/table2_partition_results.csv
-```
+The machine-readable manuscript snapshot remains at `paper/table2_partition_results.csv`. Additional SCR1 traces, assignments, and audits are retained under `results/scr1_core_tuned_repaired_context_off/`, `results/scr1_core_tuned_repaired_context_on/`, and `results/benchmark_summary/scr1_repaired_full_flow_*.csv`.
 
 ---
 
@@ -172,47 +165,18 @@ For riscv32i, Context-OFF and Context-ON both reduce the mean tier-transition co
 
 The identical Context-OFF and Context-ON path-level results indicate that this path-continuity benefit comes from constrained refinement rather than from the additional design-context term.
 
-The corresponding paper-facing data are stored at:
+The corresponding manuscript-facing data for PicoRV32 and riscv32i are stored at:
 
 ```text
 paper/table3_path_validation.csv
 ```
 
+For SCR1, the selected 100 OpenSTA maximum-delay paths belong to the `asynchronous` path group and contain no tier transitions in any of the four assignments. The unchanged mean and worst path-cut metrics establish guard compliance for this evaluated path set only; they do not establish synchronous critical-path improvement or signoff-quality 3-D timing behavior. The SCR1 path-cut outputs are retained as `results/benchmark_summary/scr1_core_tuned_*_repaired_full_flow_path_cuts.csv`.
+
 The vertical-delay study is a validation proxy and is not a replacement for full post-refinement 3-D routing or signoff timing analysis.
 ---
 
-## SCR1 Full-Flow Evaluation After Feasibility Restoration
-
-The manuscript-facing comparison above remains limited to PicoRV32 and riscv32i. Its six design-scenario pairs, the reported partition results, and the path-level validation are unchanged. The submitted manuscript includes `scr1_core_tuned` only as a feasibility-restoration boundary case. The following SCR1 refinement results were obtained separately after completing that restoration study; they are not part of the frozen manuscript tables under `paper/`.
-
-The native SCR1 assignment has a reconstructed tier-0 area fraction of `0.520588`, outside the prescribed `0.48-0.52` interval. Scenario-independent guarded restoration moves five instances and reaches `0.519990`, with raw crossing nets changing from `272` to `276` (1.47% regret). Context-OFF and Context-ON are then run from this **same restored assignment**, while the raw-cut and timing-path guards remain referenced to the **original native assignment**. In particular, the 5% raw-cut allowance is not reset after restoration.
-
-The table reports raw crossing nets (`R`) and scenario-sensitive crossing nets (`S`) using the same metric definitions as the manuscript. Context gain compares Context-ON with Context-OFF in scenario-sensitive crossings; it is undefined when the Context-OFF count is zero.
-
-| SCR1 scenario | Native R/S | Restored R/S | Context-OFF R/S | Context-ON R/S | Context gain |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| control/datapath | 272 / 136 | 276 / 136 | 285 / 143 | 285 / 142 | +0.7% |
-| memory-near-logic | 272 / 0 | 276 / 0 | 285 / 0 | 285 / 0 | N/A |
-| state/clock | 272 / 35 | 276 / 39 | 285 / 39 | 285 / 37 | +5.1% |
-
-All six refinement runs complete with 39-40 accepted instance moves. Their final reconstructed tier-0 area fractions remain within the prescribed window, and each produces `285` raw crossing nets, corresponding to `4.78%` regret relative to the original native assignment. The evaluated mean and worst tier-transition metrics remain unchanged. The raw crossing count is a feasibility guard, not the quantity directly minimized by the normalized refinement objective; consequently, an objective-improving move can increase raw crossings while remaining admissible.
-
-These results demonstrate an executable restoration-to-refinement path, not a uniform improvement over native TritonPart. Context-ON reduces scenario-sensitive crossings relative to Context-OFF for control/datapath and state/clock, but both refined solutions exceed the native scenario-sensitive counts in those two scenarios. The memory-near-logic case has no observable scenario-sensitive crossings under the retained mapping, so no context-gain percentage is reported. The SCR1 results therefore remain a boundary-case extension rather than a third design in the submitted paper's main comparison.
-
-For SCR1, the selected 100 OpenSTA maximum-delay paths in this evaluation come from the `asynchronous` path group and contain no tier transitions in any of the four assignments. The unchanged path-cut metrics apply only to these evaluated paths; they do not establish synchronous critical-path improvement or signoff-quality 3-D timing behavior.
-
-The corresponding additional results and checks are retained in:
-
-```text
-results/benchmark_summary/scr1_repaired_full_flow_structural_rollup.csv
-results/benchmark_summary/scr1_repaired_full_flow_structural_summary.csv
-results/benchmark_summary/scr1_repaired_full_flow_audit.csv
-```
-
-
----
-
-## Repository Layout
+## Repository Layout## Repository Layout
 
 ```text
 classifier/    Rule-based RISC-V design-context recovery.
@@ -324,7 +288,7 @@ The vertical-link-delay study and crossing metrics should therefore be interpret
 
 The design-context recovery is rule-based and explainable; it is not a trained machine-learning classifier.
 
-The feasibility-restoration extension is demonstrated on **one mildly infeasible imported baseline**. It shows that the evaluated SCR1 boundary case can be restored to the reconstructed area window while preserving the retained raw-cut and timing-path guard budgets, but it should not be interpreted as evidence that arbitrary or severely imbalanced native assignments can always be recovered.
+The feasibility-restoration extension is demonstrated on **one mildly infeasible imported baseline**. The SCR1 example shows that this assignment can be moved back inside the reconstructed area window while preserving the original raw-cut and timing-path guard budgets; it does not establish that arbitrary or severely imbalanced native assignments can always be recovered.
 
 ## Frozen Manuscript Snapshot
 
